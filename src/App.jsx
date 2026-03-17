@@ -7,7 +7,9 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Vencimientos from './pages/Vencimientos';
 import Deudas from './pages/Deudas';
-import Login from './pages/Login'; // Importamos el Login
+import Login from './pages/Login';
+import Causas from './pages/Causas';
+import Presupuestos from './pages/Presupuestos';
 
 function App() {
   const [usuario, setUsuario] = useState(null);
@@ -40,6 +42,8 @@ function App() {
         <Route path="/vencimientos" element={<Vencimientos />} />
         <Route path="/deudas" element={<Deudas />} />
         <Route path="*" element={<Navigate to="/" />} />
+        <Route path="/causas" element={<Causas />} />
+        <Route path="/presupuestos" element={<Presupuestos />} />
       </Routes>
     </div>
   );
