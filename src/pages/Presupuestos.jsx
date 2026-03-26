@@ -12,7 +12,8 @@ export default function Presupuestos() {
   const [cliente, setCliente] = useState('');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [validez, setValidez] = useState('15 días');
-  const [items, setItems] = useState([{ descripcion: '', monto: '' }]);
+  // Ahora los ítems tienen un "valor" y un "tipo" (fijo o porcentaje)
+  const [items, setItems] = useState([{ descripcion: '', valor: '', tipo: 'fijo' }]);
   const [notas, setNotas] = useState('Los honorarios detallados no incluyen gastos de aportes, tasas de justicia ni diligenciamientos, salvo que se especifique lo contrario.');
 
   const colorSlateBlue = '#0f172a';
@@ -38,11 +39,11 @@ export default function Presupuestos() {
     return () => unsubscribe();
   }, []);
 
-  const agregarItem = () => setItems([...items, { descripcion: '', monto: '' }]);
+  const agregarItem = () => setItems([...items, { descripcion: '', valor: '', tipo: 'fijo' }]);
   
-  const actualizarItem = (index, campo, valor) => {
+  const actualizarItem = (index, campo, nuevoValor) => {
     const nuevosItems = [...items];
-    nuevosItems[index][campo] = valor;
+    nuevosItems[index][campo] = nuevoValor;
     setItems(nuevosItems);
   };
 
@@ -53,8 +54,11 @@ export default function Presupuestos() {
     }
   };
 
+  // Solo sumamos los ítems que sean de tipo "fijo" (los porcentajes no se suman)
   const calcularTotal = (itemsArray) => {
-    return itemsArray.reduce((acc, item) => acc + (parseFloat(item.monto) || 0), 0);
+    return itemsArray
+      .filter(item => (item.tipo || 'fijo') === 'fijo')
+      .reduce((acc, item) => acc + (parseFloat(item.valor || item.monto) || 0), 0);
   };
 
   const formatearMoneda = (monto) => {
@@ -66,8 +70,9 @@ export default function Presupuestos() {
     const user = auth.currentUser;
     if (!user || !cliente.trim()) return;
 
-    const itemsValidos = items.filter(item => item.descripcion.trim() !== '' && item.monto !== '');
-    if (itemsValidos.length === 0) return alert("Debe agregar al menos un ítem con monto.");
+    // Aceptamos el ítem si tiene descripción y un valor ingresado
+    const itemsValidos = items.filter(item => item.descripcion.trim() !== '' && item.valor !== '');
+    if (itemsValidos.length === 0) return alert("Debe agregar al menos un ítem válido.");
 
     const total = calcularTotal(itemsValidos);
 
@@ -85,7 +90,7 @@ export default function Presupuestos() {
     push(presupuestosRef, nuevoPresupuesto);
 
     setCliente('');
-    setItems([{ descripcion: '', monto: '' }]);
+    setItems([{ descripcion: '', valor: '', tipo: 'fijo' }]);
     setVista('lista');
   };
 
@@ -103,7 +108,6 @@ export default function Presupuestos() {
     setVista('detalle');
   };
 
-  // La función nativa para llamar al diálogo de impresión/PDF del navegador
   const imprimirPresupuesto = () => {
     window.print();
   };
@@ -112,40 +116,16 @@ export default function Presupuestos() {
     <style>
       {`
         @media print {
-          /* Configuramos la hoja A4 y sus márgenes físicos */
-          @page {
-            size: A4 portrait;
-            margin: 15mm; 
-          }
-          
-          body {
-            background-color: white !important;
-          }
-
-          body * { 
-            visibility: hidden; 
-          }
-
-          #area-imprimible, #area-imprimible * { 
-            visibility: visible; 
-          }
-
+          @page { size: A4 portrait; margin: 15mm; }
+          body { background-color: white !important; }
+          body * { visibility: hidden; }
+          #area-imprimible, #area-imprimible * { visibility: visible; }
           #area-imprimible { 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            max-width: 100%;
-            padding: 0 !important; /* Quitamos el padding extra porque ya le dimos margen a la @page */
-            margin: 0 !important; 
-            border: none !important; 
-            box-shadow: none !important; 
-            box-sizing: border-box !important; /* CRUCIAL: Evita que el contenido desborde la hoja */
+            position: absolute; left: 0; top: 0; width: 100%; max-width: 100%;
+            padding: 0 !important; margin: 0 !important; border: none !important; 
+            box-shadow: none !important; box-sizing: border-box !important; 
           }
-
-          .no-print { 
-            display: none !important; 
-          }
+          .no-print { display: none !important; }
         }
       `}
     </style>
@@ -155,6 +135,7 @@ export default function Presupuestos() {
     <div style={{ padding: '30px', maxWidth: '1000px', margin: '0 auto' }}>
       <PrintStyles />
 
+      {/* VISTA: LISTA */}
       {vista === 'lista' && (
         <div className="no-print">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -179,7 +160,7 @@ export default function Presupuestos() {
                   <tr>
                     <th style={{ padding: '15px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>Fecha</th>
                     <th style={{ padding: '15px', textAlign: 'left', color: '#475569', fontWeight: '600' }}>Cliente / Ref.</th>
-                    <th style={{ padding: '15px', textAlign: 'right', color: '#475569', fontWeight: '600' }}>Total</th>
+                    <th style={{ padding: '15px', textAlign: 'right', color: '#475569', fontWeight: '600' }}>Total / Honorarios</th>
                     <th style={{ padding: '15px', textAlign: 'center', color: '#475569', fontWeight: '600' }}>Acciones</th>
                   </tr>
                 </thead>
@@ -188,7 +169,10 @@ export default function Presupuestos() {
                     <tr key={p.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '15px', color: colorSlateBlue }}>{p.fecha}</td>
                       <td style={{ padding: '15px', color: colorSlateBlue, fontWeight: '500' }}>{p.cliente}</td>
-                      <td style={{ padding: '15px', color: colorSlateBlue, textAlign: 'right', fontWeight: 'bold' }}>{formatearMoneda(p.total)}</td>
+                      <td style={{ padding: '15px', color: colorSlateBlue, textAlign: 'right', fontWeight: 'bold' }}>
+                        {/* Si hay un total fijo lo mostramos, si es 0 significa que es puro porcentaje */}
+                        {p.total > 0 ? formatearMoneda(p.total) : 'A resultado (%)'}
+                      </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                           <button onClick={() => abrirDetalle(p)} title="Ver y Descargar" style={{ backgroundColor: '#eff6ff', color: '#3b82f6', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -208,6 +192,7 @@ export default function Presupuestos() {
         </div>
       )}
 
+      {/* VISTA: NUEVO PRESUPUESTO */}
       {vista === 'nuevo' && (
         <div className="no-print">
           <button onClick={() => setVista('lista')} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '20px', fontWeight: 'bold' }}>
@@ -229,13 +214,22 @@ export default function Presupuestos() {
                 </div>
               </div>
 
+              {/* SECCIÓN DE ÍTEMS DINÁMICOS */}
               <div style={{ marginBottom: '30px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#475569', marginBottom: '10px' }}>Ítems de Honorarios</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#475569', marginBottom: '10px' }}>Detalle de Servicios / Honorarios</label>
                 {items.map((item, index) => (
-                  <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                    <input type="text" placeholder="Descripción del servicio (ej. Redacción de carta documento)" value={item.descripcion} onChange={e => actualizarItem(index, 'descripcion', e.target.value)} required style={{ flex: 3, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-                    <input type="number" placeholder="Monto" value={item.monto} onChange={e => actualizarItem(index, 'monto', e.target.value)} required style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-                    <button type="button" onClick={() => eliminarItem(index)} style={{ backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', padding: '0 15px', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                  <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
+                    <input type="text" placeholder="Ej: Demanda Laboral" value={item.descripcion} onChange={e => actualizarItem(index, 'descripcion', e.target.value)} required style={{ flex: 3, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                    
+                    {/* SELECTOR FIJO/PORCENTAJE */}
+                    <select value={item.tipo || 'fijo'} onChange={e => actualizarItem(index, 'tipo', e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', color: colorSlateBlue, fontWeight: 'bold' }}>
+                      <option value="fijo">Monto Fijo ($)</option>
+                      <option value="porcentaje">Porcentaje (%)</option>
+                    </select>
+
+                    <input type="number" placeholder={item.tipo === 'porcentaje' ? "Ej: 20" : "Ej: 50000"} value={item.valor} onChange={e => actualizarItem(index, 'valor', e.target.value)} required style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                    
+                    <button type="button" onClick={() => eliminarItem(index)} style={{ backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', padding: '10px 15px', cursor: 'pointer' }}><Trash2 size={18} /></button>
                   </div>
                 ))}
                 <button type="button" onClick={agregarItem} style={{ background: 'none', border: '1px dashed #cbd5e1', color: colorSlateBlue, width: '100%', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginTop: '5px' }}>+ Agregar otro ítem</button>
@@ -248,7 +242,7 @@ export default function Presupuestos() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '20px', fontWeight: 'bold', color: colorSlateBlue }}>
-                  Total Estimado: {formatearMoneda(calcularTotal(items))}
+                  Total Fijo: {formatearMoneda(calcularTotal(items))}
                 </div>
                 <button type="submit" style={{ backgroundColor: '#10b981', color: 'white', padding: '12px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}>Guardar y Generar</button>
               </div>
@@ -257,6 +251,7 @@ export default function Presupuestos() {
         </div>
       )}
 
+      {/* VISTA: PLANTILLA IMPRIMIBLE */}
       {vista === 'detalle' && presupuestoActual && (
         <div>
           <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
@@ -274,7 +269,6 @@ export default function Presupuestos() {
             </div>
           </div>
 
-          {/* ÁREA IMPRIMIBLE */}
           <div id="area-imprimible" style={{ backgroundColor: 'white', padding: '50px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', color: '#1e293b' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '20px', marginBottom: '30px' }}>
               <img src={logoEstudio} alt="DP Legales" style={{ height: '60px' }} />
@@ -299,31 +293,44 @@ export default function Presupuestos() {
               </div>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
-              <thead>
-                <tr style={{ backgroundColor: colorSlateBlue, color: 'white' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', borderTopLeftRadius: '6px' }}>Descripción del Servicio</th>
-                  <th style={{ padding: '12px', textAlign: 'right', borderTopRightRadius: '6px', width: '200px' }}>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {presupuestoActual.items.map((item, index) => (
-                  <tr key={index} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '15px 12px', color: '#334155' }}>{item.descripcion}</td>
-                    <td style={{ padding: '15px 12px', textAlign: 'right', fontWeight: '500', color: colorSlateBlue }}>{formatearMoneda(item.monto)}</td>
+            {presupuestoActual.items && presupuestoActual.items.length > 0 && (
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: colorSlateBlue, color: 'white' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', borderTopLeftRadius: '6px' }}>Descripción del Servicio</th>
+                    <th style={{ padding: '12px', textAlign: 'right', borderTopRightRadius: '6px', width: '200px' }}>Honorarios / Monto</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {presupuestoActual.items.map((item, index) => {
+                    // Verificamos si es monto viejo o nuevo valor
+                    const valorItem = item.valor || item.monto; 
+                    const esFijo = (item.tipo || 'fijo') === 'fijo';
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
-              <div style={{ width: '300px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '20px', fontWeight: 'bold', color: colorSlateBlue }}>
-                  <span>TOTAL:</span>
-                  <span>{formatearMoneda(presupuestoActual.total)}</span>
+                    return (
+                      <tr key={index} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '15px 12px', color: '#334155' }}>{item.descripcion}</td>
+                        <td style={{ padding: '15px 12px', textAlign: 'right', fontWeight: '500', color: colorSlateBlue }}>
+                          {esFijo ? formatearMoneda(valorItem) : `${valorItem} %`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+
+            {/* Solo mostramos la caja de total si existen montos fijos para sumar */}
+            {presupuestoActual.total > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
+                <div style={{ width: '380px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold', color: colorSlateBlue }}>
+                    <span>TOTAL FIJO ESTIMADO:</span>
+                    <span>{formatearMoneda(presupuestoActual.total)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
               <p style={{ margin: '0 0 5px 0' }}><strong>Condiciones y Notas:</strong></p>
