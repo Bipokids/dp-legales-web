@@ -276,14 +276,13 @@ export default function Presupuestos() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0f172a', paddingBottom: '20px', marginBottom: '30px' }}>
               
               {/* Logo Izquierda */}
-              <img src={logoEstudio} alt="Mariela Durante y Asoc." style={{ height: '60px', objectFit: 'contain' }} />
+              <img src={logoEstudio} alt="DP Legales - Estudio Jurídico" style={{ height: '60px', objectFit: 'contain' }} />
               
               {/* Datos Derecha */}
               <div style={{ textAlign: 'right', fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
-                <strong style={{ fontSize: '15px', color: colorSlateBlue }}>Estudio Jurídico Mariela Durante y Asoc.</strong><br />
+                <strong style={{ fontSize: '15px', color: colorSlateBlue }}>DP Legales - Estudio Jurídico</strong><br />
                 Sarmiento 4652 2° 10, CABA<br />
                 Tel: 11-2846-3308<br />
-                durantemn@gmail.com
               </div>
             </div>
 
