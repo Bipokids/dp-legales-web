@@ -16,7 +16,10 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userUid = auth.currentUser.uid;
+    const user = auth.currentUser;
+    if (!user) return; // Validación de seguridad
+
+    const userUid = user.uid;
 
     const clientesRef = ref(db, `clientes/${userUid}`);
     onValue(clientesRef, (snapshot) => {
@@ -42,6 +45,9 @@ export default function Dashboard() {
 
   const bigCardStyle = { backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 25px rgba(15, 23, 42, 0.05)', flex: '1 1 300px', display: 'flex', flexDirection: 'column', color: '#0f172a', border: '1px solid #e2e8f0', position: 'relative', cursor: 'pointer' };
 
+  // Capturamos el email para la validación
+  const usuarioEmail = auth.currentUser?.email;
+
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
       
@@ -49,7 +55,13 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', borderBottom: '2px solid #e2e8f0', paddingBottom: '20px', flexWrap: 'wrap', gap: '20px' }}>
         <div>
           <h1 style={{ color: '#0f172a', margin: '0 0 8px 0', fontSize: '28px', fontWeight: '700', letterSpacing: '-0.5px' }}>Panel de Control</h1>
-          <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>Estudio Jurídico DP Legales</p>
+          
+          {/* SUBTÍTULO DINÁMICO */}
+          <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>
+            {usuarioEmail === 'mdurante@sistema.com' 
+              ? 'Mariela Durante y Asoc.' 
+              : 'Estudio Jurídico DP Legales'}
+          </p>
         </div>
         
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>

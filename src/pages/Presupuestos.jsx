@@ -3,16 +3,18 @@ import { ref, onValue, push, set, remove } from 'firebase/database';
 import { auth, database } from '../config/firebase';
 import { FileText, Plus, Trash2, Printer, ChevronLeft, Eye } from 'lucide-react';
 import logoEstudio from '../assets/logo_completo.png';
+import logoPersonal from '../assets/logo_personal.png';
 
 export default function Presupuestos() {
   const [presupuestos, setPresupuestos] = useState([]);
   const [vista, setVista] = useState('lista'); 
   const [presupuestoActual, setPresupuestoActual] = useState(null);
 
+  // Estados de usuario y formulario
+  const [usuarioEmail, setUsuarioEmail] = useState(''); 
   const [cliente, setCliente] = useState('');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [validez, setValidez] = useState('15 días');
-  // Ahora los ítems tienen un "valor" y un "tipo" (fijo o porcentaje)
   const [items, setItems] = useState([{ descripcion: '', valor: '', tipo: 'fijo' }]);
   const [notas, setNotas] = useState('Los honorarios detallados no incluyen gastos de aportes, tasas de justicia ni diligenciamientos, salvo que se especifique lo contrario.');
 
@@ -21,6 +23,9 @@ export default function Presupuestos() {
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
+
+    // Guardamos el email para usarlo en el membrete
+    setUsuarioEmail(user.email);
 
     const presupuestosRef = ref(database, `presupuestos/${user.uid}`);
     const unsubscribe = onValue(presupuestosRef, (snapshot) => {
@@ -54,7 +59,6 @@ export default function Presupuestos() {
     }
   };
 
-  // Solo sumamos los ítems que sean de tipo "fijo" (los porcentajes no se suman)
   const calcularTotal = (itemsArray) => {
     return itemsArray
       .filter(item => (item.tipo || 'fijo') === 'fijo')
@@ -70,7 +74,6 @@ export default function Presupuestos() {
     const user = auth.currentUser;
     if (!user || !cliente.trim()) return;
 
-    // Aceptamos el ítem si tiene descripción y un valor ingresado
     const itemsValidos = items.filter(item => item.descripcion.trim() !== '' && item.valor !== '');
     if (itemsValidos.length === 0) return alert("Debe agregar al menos un ítem válido.");
 
@@ -170,7 +173,6 @@ export default function Presupuestos() {
                       <td style={{ padding: '15px', color: colorSlateBlue }}>{p.fecha}</td>
                       <td style={{ padding: '15px', color: colorSlateBlue, fontWeight: '500' }}>{p.cliente}</td>
                       <td style={{ padding: '15px', color: colorSlateBlue, textAlign: 'right', fontWeight: 'bold' }}>
-                        {/* Si hay un total fijo lo mostramos, si es 0 significa que es puro porcentaje */}
                         {p.total > 0 ? formatearMoneda(p.total) : 'A resultado (%)'}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
@@ -272,18 +274,33 @@ export default function Presupuestos() {
           {/* ÁREA IMPRIMIBLE */}
           <div id="area-imprimible" style={{ backgroundColor: 'white', padding: '50px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', color: '#1e293b' }}>
             
-            {/* NUEVO MEMBRETE ACTUALIZADO */}
+            {/* MEMBRETE DINÁMICO */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0f172a', paddingBottom: '20px', marginBottom: '30px' }}>
               
-              {/* Logo Izquierda */}
-              <img src={logoEstudio} alt="DP Legales - Estudio Jurídico" style={{ height: '60px', objectFit: 'contain' }} />
-              
-              {/* Datos Derecha */}
-              <div style={{ textAlign: 'right', fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
-                <strong style={{ fontSize: '15px', color: colorSlateBlue }}>DP Legales - Estudio Jurídico</strong><br />
-                Sarmiento 4652 2° 10, CABA<br />
-                Tel: 11-2846-3308<br />
-              </div>
+              {usuarioEmail === 'mdurante@sistema.com' ? (
+                <>
+                  {/* MEMBRETE: USUARIO PERSONAL */}
+                  <img src={logoPersonal} alt="Logo Consultor" style={{ height: '60px', objectFit: 'contain' }} />
+                  
+                  <div style={{ textAlign: 'right', fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
+                    <strong style={{ fontSize: '15px', color: colorSlateBlue }}>Nombre del Profesional</strong><br />
+                    Sarmiento 4652 2° 10, CABA<br />
+                    Tel: 11-2846-3308<br />
+                    durantemn@gmail.com<br />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* MEMBRETE: DP LEGALES (Por defecto) */}
+                  <img src={logoEstudio} alt="DP Legales - Estudio Jurídico" style={{ height: '60px', objectFit: 'contain' }} />
+                  
+                  <div style={{ textAlign: 'right', fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
+                    <strong style={{ fontSize: '15px', color: colorSlateBlue }}>DP Legales - Estudio Jurídico</strong><br />
+                    Sarmiento 4652 2° 10, CABA<br />
+                    Tel: 11-2846-3308<br />
+                  </div>
+                </>
+              )}
             </div>
 
             <div style={{ marginBottom: '40px' }}>
@@ -311,7 +328,6 @@ export default function Presupuestos() {
                 </thead>
                 <tbody>
                   {presupuestoActual.items.map((item, index) => {
-                    // Verificamos si es monto viejo o nuevo valor
                     const valorItem = item.valor || item.monto; 
                     const esFijo = (item.tipo || 'fijo') === 'fijo';
 
@@ -328,7 +344,6 @@ export default function Presupuestos() {
               </table>
             )}
 
-            {/* Solo mostramos la caja de total si existen montos fijos para sumar */}
             {presupuestoActual.total > 0 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
                 <div style={{ width: '380px', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>

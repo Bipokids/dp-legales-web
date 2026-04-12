@@ -4,6 +4,7 @@ import { auth } from '../config/firebase';
 import { signOut } from 'firebase/auth';
 
 import logoEstudio from '../assets/logo_completo.png';
+import logoPersonal from '../assets/logo_personal.png'; // <-- 1. Importamos el nuevo logo
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -14,6 +15,9 @@ export default function Navbar() {
       navigate('/login');
     });
   };
+
+  // Capturamos el email para que el código quede más limpio
+  const usuarioEmail = auth.currentUser?.email;
 
   return (
     <nav style={{
@@ -27,15 +31,16 @@ export default function Navbar() {
       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' // Sombra un poco más profunda
     }}>
       
-      {/* SECCIÓN IZQUIERDA: LOGO CORPORATIVO */}
+      {/* SECCIÓN IZQUIERDA: LOGO CORPORATIVO DINÁMICO */}
       <div 
         onClick={() => navigate('/')} 
         style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
         title="Volver al Inicio"
       >
         <img 
-          src={logoEstudio} 
-          alt="Logo DP Legales" 
+          // <-- 2. Renderizado condicional del logo
+          src={usuarioEmail === 'mdurante@sistema.com' ? logoPersonal : logoEstudio} 
+          alt={usuarioEmail === 'mdurante@sistema.com' ? "Logo Profesional" : "Logo DP Legales"} 
           style={{ 
             height: '45px', 
             width: 'auto',
@@ -75,7 +80,7 @@ export default function Navbar() {
           paddingLeft: '20px',
           fontWeight: '500'
         }}>
-          {auth.currentUser?.email}
+          {usuarioEmail}
         </span>
         
         <button 
